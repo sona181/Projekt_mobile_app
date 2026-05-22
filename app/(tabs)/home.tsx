@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useAuth } from '../../src/context/AuthContext';
@@ -6,6 +6,8 @@ import { useAuth } from '../../src/context/AuthContext';
 export default function HomeScreen() {
   const { user } = useAuth();
   const router = useRouter();
+
+  if (user?.role === 'instructor') return <Redirect href="/instructor/dashboard" />;
   const displayName = user?.profile?.displayName ?? user?.email ?? 'Learner';
   const initials = displayName
     .split(' ')

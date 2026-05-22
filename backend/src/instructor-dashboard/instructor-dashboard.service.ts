@@ -127,12 +127,15 @@ export class InstructorDashboardService {
   }
 
   async createNote(instructorId: string, dto: CreateNoteDto) {
+    const now = new Date();
     return this.prisma.sessionNote.create({
       data: {
         sessionId: dto.sessionId,
         authorId: instructorId,
         content: dto.content,
         isSharedWithStudent: dto.isShared,
+        createdAt: now,
+        updatedAt: now,
       },
     });
   }
