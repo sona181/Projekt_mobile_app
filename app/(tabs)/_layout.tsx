@@ -16,7 +16,7 @@ export default function TabsLayout() {
   }
 
   if (!isAuthenticated) {
-    return <Redirect href="/(auth)/register" />;
+    return <Redirect href="/(auth)/login" />;
   }
 
   return (
