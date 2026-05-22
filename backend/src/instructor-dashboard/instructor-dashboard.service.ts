@@ -2,6 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateChapterDto } from './dto/create-chapter.dto.js';
 import { CreateCourseDto } from './dto/create-course.dto.js';
+import { CreateExerciseDto } from './dto/create-exercise.dto.js';
+import { CreateLessonContentDto } from './dto/create-lesson-content.dto.js';
 import { CreateLessonDto } from './dto/create-lesson.dto.js';
 import { CreateNoteDto } from './dto/create-note.dto.js';
 import { BookingStatus } from './dto/update-booking-status.dto.js';
@@ -310,6 +312,88 @@ export class InstructorDashboardService {
       slug = `${base}-${++n}`;
     }
     return slug;
+  }
+
+  // ── Lesson Content ─────────────────────────────────────────────────────────
+  async addLessonContent(lessonId: string, dto: CreateLessonContentDto) {
+    const count = await this.prisma.lessonContent.count({ where: { lessonId } });
+    const now = new Date();
+    return this.prisma.lessonContent.create({
+      data: {
+        lessonId,
+        contentType: dto.contentType,
+        body: dto.body ?? null,
+        mediaUrl: dto.mediaUrl ?? null,
+        orderIndex: dto.orderIndex ?? count,
+        createdAt: now,
+      },
+    });
+  }
+
+  async getLessonContent(lessonId: string) {
+    return this.prisma.lessonContent.findMany({
+      where: { lessonId },
+      orderBy: { orderIndex: 'asc' },
+    });
+  }
+
+  // ── Exercises ──────────────────────────────────────────────────────────────
+  async addExercise(lessonId: string, dto: CreateExerciseDto) {
+    const count = await this.prisma.courseExercise.count({ where: { lessonId } });
+    const now = new Date();
+    return this.prisma.courseExercise.create({
+      data: {
+        lessonId,
+        title: dto.title,
+        instructions: dto.instructions ?? null,
+        language: dto.language,
+        starterCode: dto.starterCode ?? null,
+        solutionCode: dto.solutionCode ?? null,
+        expectedOutput: dto.expectedOutput ?? null,
+        orderIndex: dto.orderIndex ?? count,
+        createdAt: now,
+      },
+    });
+  }
+
+  async getExercises(lessonId: string) {
+    return this.prisma.courseExercise.findMany({
+      where: { lessonId },
+      orderBy: { orderIndex: 'asc' },
+    });
+  }
+
+  // ── File Upload (asset registration) ──────────────────────────────────────
+  async registerUploadedAsset(
+    courseId: string,
+    lessonId: string,
+    file: Express.Multer.File,
+    contentType: string,
+    fileUrl: string,
+  ) {
+    const now = new Date();
+    await this.prisma.courseAsset.create({
+      data: {
+        courseId,
+        lessonId,
+        assetType: contentType,
+        fileName: file.originalname,
+        fileUrl,
+        fileSize: file.size,
+        mimeType: file.mimetype,
+        createdAt: now,
+      },
+    });
+    const count = await this.prisma.lessonContent.count({ where: { lessonId } });
+    return this.prisma.lessonContent.create({
+      data: {
+        lessonId,
+        contentType,
+        mediaUrl: fileUrl,
+        orderIndex: count,
+        createdAt: now,
+      },
+    });
   }
 
   // ── Bookings ───────────────────────────────────────────────────────────────

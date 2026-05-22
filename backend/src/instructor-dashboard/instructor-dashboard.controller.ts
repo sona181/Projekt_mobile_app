@@ -7,13 +7,26 @@ import {
   Body,
   HttpCode,
   HttpStatus,
+  UploadedFile,
+  UseInterceptors,
+  BadRequestException,
+  Query,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname, join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
 import { CreateChapterDto } from './dto/create-chapter.dto.js';
 import { CreateCourseDto } from './dto/create-course.dto.js';
+import { CreateExerciseDto } from './dto/create-exercise.dto.js';
+import { CreateLessonContentDto } from './dto/create-lesson-content.dto.js';
 import { CreateLessonDto } from './dto/create-lesson.dto.js';
 import { CreateNoteDto } from './dto/create-note.dto.js';
 import { UpdateBookingStatusDto } from './dto/update-booking-status.dto.js';
 import { InstructorDashboardService } from './instructor-dashboard.service.js';
+
+const UPLOADS_DIR = join(process.cwd(), 'uploads');
+if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });
 
 @Controller('instructor')
 export class InstructorDashboardController {
@@ -124,5 +137,59 @@ export class InstructorDashboardController {
     @Body() dto: Partial<CreateLessonDto>,
   ) {
     return this.dashboardService.updateLesson(lessonId, chapterId, courseId, id, dto);
+  }
+
+  /** GET /instructor/:id/lessons/:lessonId/content */
+  @Get(':id/lessons/:lessonId/content')
+  getLessonContent(@Param('lessonId') lessonId: string) {
+    return this.dashboardService.getLessonContent(lessonId);
+  }
+
+  /** POST /instructor/:id/lessons/:lessonId/content */
+  @Post(':id/lessons/:lessonId/content')
+  @HttpCode(HttpStatus.CREATED)
+  addLessonContent(@Param('lessonId') lessonId: string, @Body() dto: CreateLessonContentDto) {
+    return this.dashboardService.addLessonContent(lessonId, dto);
+  }
+
+  /** GET /instructor/:id/lessons/:lessonId/exercises */
+  @Get(':id/lessons/:lessonId/exercises')
+  getExercises(@Param('lessonId') lessonId: string) {
+    return this.dashboardService.getExercises(lessonId);
+  }
+
+  /** POST /instructor/:id/lessons/:lessonId/exercise */
+  @Post(':id/lessons/:lessonId/exercise')
+  @HttpCode(HttpStatus.CREATED)
+  addExercise(@Param('lessonId') lessonId: string, @Body() dto: CreateExerciseDto) {
+    return this.dashboardService.addExercise(lessonId, dto);
+  }
+
+  /** POST /instructor/:id/courses/:courseId/lessons/:lessonId/upload */
+  @Post(':id/courses/:courseId/lessons/:lessonId/upload')
+  @HttpCode(HttpStatus.CREATED)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: UPLOADS_DIR,
+        filename: (_req, file, cb) => {
+          const unique = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+          cb(null, `${unique}${extname(file.originalname)}`);
+        },
+      }),
+      limits: { fileSize: 500 * 1024 * 1024 },
+    }),
+  )
+  uploadLessonFile(
+    @Param('id') _id: string,
+    @Param('courseId') courseId: string,
+    @Param('lessonId') lessonId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Query('contentType') contentType: string,
+  ) {
+    if (!file) throw new BadRequestException('No file uploaded');
+    const baseUrl = process.env.BASE_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
+    const fileUrl = `${baseUrl}/uploads/${file.filename}`;
+    return this.dashboardService.registerUploadedAsset(courseId, lessonId, file, contentType ?? 'video', fileUrl);
   }
 }
