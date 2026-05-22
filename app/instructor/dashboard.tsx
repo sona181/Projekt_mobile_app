@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -9,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/context/AuthContext';
 
 const API = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '') ?? '';
@@ -54,6 +54,11 @@ export default function InstructorDashboard() {
       fetch(`${API}/instructor/${instructorId}/notifications`).then((r) => r.json()),
     ])
       .then(([dash, n, c, e, notif]) => {
+        if (!dash?.instructor) {
+          setError('Dashboard data unavailable. Make sure the backend is running.');
+          setLoading(false);
+          return;
+        }
         setDashboard(dash);
         setNotes(Array.isArray(n) ? n : []);
         setCourses(Array.isArray(c) ? c : []);
