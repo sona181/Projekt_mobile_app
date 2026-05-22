@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 
 const BASE = process.env.EXPO_PUBLIC_API_URL ?? '';
@@ -33,6 +34,7 @@ function Bar({ pct, color }: { pct: number; color: string }) {
 
 export default function InstructorDashboard() {
   const { user, logout } = useAuth();
+  const router = useRouter();
   const id = user?.id ?? '';
 
   const [dash, setDash] = useState<any>(null);
@@ -210,7 +212,7 @@ export default function InstructorDashboard() {
             })
           )}
 
-          <TouchableOpacity style={styles.uploadBtn}>
+          <TouchableOpacity style={styles.uploadBtn} onPress={() => router.push('/instructor/create-course')}>
             <Text style={styles.uploadBtnText}>+ Upload New Course</Text>
           </TouchableOpacity>
 
