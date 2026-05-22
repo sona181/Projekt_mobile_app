@@ -32,7 +32,7 @@ export class AuthService {
       data: {
         email: dto.email,
         passwordHash,
-        role: 'student',
+        role: dto.role,
         isActive: true,
         isVerified: false,
         createdAt: now,
@@ -68,6 +68,16 @@ export class AuthService {
             updatedAt: now,
           },
         },
+        ...(dto.role === 'instructor' && {
+          instructorProfile: {
+            create: {
+              isVerified: false,
+              isAvailable: true,
+              createdAt: now,
+              updatedAt: now,
+            },
+          },
+        }),
       },
       include: { profile: true },
     });

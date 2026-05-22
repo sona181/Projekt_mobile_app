@@ -42,6 +42,7 @@ export default function RegisterScreen() {
         displayName: `${firstName.trim()} ${lastName.trim()}`,
         email: email.trim().toLowerCase(),
         password,
+        role,
       });
     } catch (e: unknown) {
       const msg =
