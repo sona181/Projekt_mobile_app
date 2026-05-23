@@ -92,7 +92,13 @@ export default function InstructorDashboard() {
         <Text style={{ fontSize: 40, marginBottom: 16 }}>⚠️</Text>
         <Text style={styles.errorTitle}>Something went wrong</Text>
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryBtn} onPress={logout}>
+        <TouchableOpacity
+          style={styles.retryBtn}
+          onPress={async () => {
+            await logout();
+            router.replace('/(auth)/login');
+          }}
+        >
           <Text style={styles.retryText}>Sign Out</Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -280,7 +286,13 @@ export default function InstructorDashboard() {
           </TouchableOpacity>
 
           {/* SIGN OUT */}
-          <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+          <TouchableOpacity
+            style={styles.logoutBtn}
+            onPress={async () => {
+              await logout();
+              router.replace('/(auth)/login');
+            }}
+          >
             <Text style={styles.logoutText}>Sign Out</Text>
           </TouchableOpacity>
 
