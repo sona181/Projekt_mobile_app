@@ -20,8 +20,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/context/AuthContext';
 
 const BASE = process.env.EXPO_PUBLIC_API_URL ?? '';
-// Static file base (no /api prefix) for uploaded media URLs
-const STATIC_BASE = BASE.replace(/\/api$/, '');
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Lesson = {

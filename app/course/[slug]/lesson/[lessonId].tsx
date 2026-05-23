@@ -14,7 +14,6 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuth } from '../../../../src/context/AuthContext';
 
 const BASE = process.env.EXPO_PUBLIC_API_URL ?? '';
 
@@ -362,7 +361,6 @@ const ex = StyleSheet.create({
 export default function LessonScreen() {
   const { slug, lessonId } = useLocalSearchParams<{ slug: string; lessonId: string }>();
   const router = useRouter();
-  const { user } = useAuth();
 
   const [lesson, setLesson] = useState<LessonData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -458,14 +456,21 @@ export default function LessonScreen() {
           if (content.contentType === 'video' && content.mediaUrl) {
             return <VideoPlayer key={content.id} url={content.mediaUrl} />;
           }
-          if ((content.contentType === 'pdf' || content.contentType === 'image') && content.mediaUrl) {
+          // PDF, ZIP, file, image, or any other type with a URL → downloadable card
+          if (content.mediaUrl) {
             const fileName = content.mediaUrl.split('/').pop() ?? 'file';
+            const mimeMap: Record<string, string> = {
+              pdf: 'application/pdf',
+              image: 'image/jpeg',
+              zip: 'application/zip',
+              file: 'application/octet-stream',
+            };
             return (
               <FileBlock
                 key={content.id}
                 url={content.mediaUrl}
                 fileName={fileName}
-                mimeType={content.contentType === 'pdf' ? 'application/pdf' : 'image/jpeg'}
+                mimeType={mimeMap[content.contentType] ?? 'application/octet-stream'}
               />
             );
           }
@@ -477,9 +482,9 @@ export default function LessonScreen() {
           <ExerciseBlock key={exercise.id} exercise={exercise} />
         ))}
 
-        {/* Asset downloads (ZIP files, etc.) */}
+        {/* Extra assets not already shown via lessonContents */}
         {lesson.assets
-          .filter((a) => !lesson.lessonContents.some((c) => c.mediaUrl === a.fileUrl))
+          .filter((a) => !lesson.lessonContents.some((c) => c.mediaUrl === a.fileUrl && c.mediaUrl != null))
           .map((asset) => (
             <FileBlock
               key={asset.id}
