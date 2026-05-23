@@ -53,17 +53,6 @@ function SectionTitle({ text }: { text: string }) {
   return <Text style={s.sectionTitle}>{text}</Text>;
 }
 
-function ActivityRow({ color, title, subtitle }: { color: string; title: string; subtitle: string }) {
-  return (
-    <View style={s.activityRow}>
-      <View style={[s.dot, { backgroundColor: color }]} />
-      <View style={{ flex: 1 }}>
-        <Text style={s.activityTitle}>{title}</Text>
-        <Text style={s.activitySub}>{subtitle}</Text>
-      </View>
-    </View>
-  );
-}
 
 function CourseCard({
   enrollment,
@@ -175,28 +164,23 @@ export default function HomeScreen() {
           <Text style={s.subtitle}>Vazhdo nga ku u ndave</Text>
 
           <View style={s.statsRow}>
-            <StatBox value="🔥 7 ditë" label="Streak aktual" />
-            <StatBox value="1,240 XP" label="Pikë totale" />
             <StatBox
               value={String(enrollments.length)}
-              label={enrollments.length === 1 ? 'Kurs' : 'Kurse'}
+              label={enrollments.length === 1 ? 'Kurs' : 'Kurse të regjistruara'}
+            />
+            <StatBox
+              value={String(inProgressEnrollments.length)}
+              label="Në progres"
+            />
+            <StatBox
+              value={String(completedEnrollments.length)}
+              label="Të përfunduara"
             />
           </View>
         </View>
 
         {/* ── Body ─────────────────────────────────────────────────────── */}
         <View style={s.body}>
-
-          {/* Next session */}
-          <View style={s.sessionCard}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.sessionTitle}>Sesioni i ardhshëm</Text>
-              <Text style={s.sessionSub}>Nesër 15:00 · Prof. Erjon Muçaj</Text>
-            </View>
-            <TouchableOpacity style={s.blueBtn}>
-              <Text style={s.blueBtnText}>Shiko</Text>
-            </TouchableOpacity>
-          </View>
 
           {/* In-progress courses */}
           <SectionTitle text="Vazhdo mësimet" />
@@ -223,24 +207,6 @@ export default function HomeScreen() {
             ))
           )}
 
-          {/* Subscription */}
-          <SectionTitle text="Abonimi" />
-          <View style={s.subscriptionCard}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.planTitle}>Plan Standard</Text>
-              <Text style={s.planSub}>15€/muaj · 5 ditë provë mbeten</Text>
-            </View>
-            <TouchableOpacity style={s.blueBtn}>
-              <Text style={s.blueBtnText}>Menaxho</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Recent activity */}
-          <SectionTitle text="Aktiviteti i fundit" />
-          <ActivityRow color="#10B981" title="Kreu Mësimin 8 — Python" subtitle="2 orë më parë" />
-          <ActivityRow color="#F59E0B" title='Fitoi medaljen "Nxënës i Shpejtë"' subtitle="Dje" />
-          <ActivityRow color="#2563EB" title="Mori 90% në kuizin e CSS" subtitle="2 ditë më parë" />
-
           {/* Certificates */}
           {completedEnrollments.length > 0 && (
             <>
@@ -263,23 +229,14 @@ export default function HomeScreen() {
             </>
           )}
 
-          {/* Static certificate placeholder when no completions */}
-          {completedEnrollments.length === 0 && (
-            <>
-              <SectionTitle text="Certifikatat" />
-              <View style={s.certCard}>
-                <Text style={s.certIcon}>🏆</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.certTitle}>Hyrje në Python</Text>
-                  <Text style={s.certSub}>Lëshuar 15 Shkurt 2026</Text>
-                </View>
-                <Text style={s.certLink}>Shiko</Text>
-              </View>
-            </>
-          )}
-
           {/* Sign out */}
-          <TouchableOpacity style={s.logoutBtn} onPress={logout}>
+          <TouchableOpacity
+            style={s.logoutBtn}
+            onPress={async () => {
+              await logout();
+              router.replace('/(auth)/login');
+            }}
+          >
             <Text style={s.logoutText}>Dilni nga llogaria</Text>
           </TouchableOpacity>
         </View>
@@ -341,30 +298,6 @@ const s = StyleSheet.create({
     marginBottom: 12,
   },
 
-  // Session card
-  sessionCard: {
-    backgroundColor: '#FFFBEB',
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-    borderRadius: 14,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 4,
-  },
-  sessionTitle: { color: '#92400E', fontWeight: '800', fontSize: 14 },
-  sessionSub: { color: '#B45309', fontSize: 12, marginTop: 2 },
-
-  // Blue button
-  blueBtn: {
-    backgroundColor: '#2563EB',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  blueBtnText: { color: 'white', fontWeight: '800', fontSize: 13 },
-
   // Course cards
   courseCard: {
     flexDirection: 'row',
@@ -408,31 +341,6 @@ const s = StyleSheet.create({
   emptyCoursesEmoji: { fontSize: 36, marginBottom: 10 },
   emptyCoursesTitle: { fontSize: 14, color: '#6B7280', marginBottom: 10 },
   emptyCoursesBtn: { color: '#2563EB', fontWeight: '800', fontSize: 14 },
-
-  // Subscription
-  subscriptionCard: {
-    backgroundColor: 'white',
-    borderRadius: 14,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    gap: 12,
-  },
-  planTitle: { fontWeight: '800', color: '#111827', fontSize: 14 },
-  planSub: { color: '#6B7280', fontSize: 12, marginTop: 2 },
-
-  // Activity
-  activityRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 14,
-    alignItems: 'flex-start',
-  },
-  dot: { width: 9, height: 9, borderRadius: 5, marginTop: 4, flexShrink: 0 },
-  activityTitle: { fontWeight: '700', color: '#111827', fontSize: 13 },
-  activitySub: { color: '#9CA3AF', fontSize: 12, marginTop: 1 },
 
   // Certificate
   certCard: {
