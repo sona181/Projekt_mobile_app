@@ -49,4 +49,9 @@ export class CoursesController {
   findBySlug(@Param('slug') slug: string, @Request() req?: { user?: { id: string } }) {
     return this.courses.findBySlug(slug, req?.user?.id);
   }
+
+  @Get(':slug/lessons/:lessonId')
+  getLessonContent(@Param('lessonId') lessonId: string) {
+    return this.courses.getLessonWithContent(lessonId);
+  }
 }

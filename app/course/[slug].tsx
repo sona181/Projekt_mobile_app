@@ -180,7 +180,10 @@ export default function CourseDetailScreen() {
               <Button
                 mode="contained"
                 icon="play"
-                onPress={() => router.push(`/course/${slug}/learn`)}
+                onPress={() => {
+                  const firstLesson = course.chapters?.[0]?.lessons?.[0];
+                  if (firstLesson) router.push(`/course/${slug}/lesson/${firstLesson.id}`);
+                }}
                 style={{ marginTop: 10 }}
                 contentStyle={{ paddingVertical: 6 }}
               >
@@ -220,37 +223,43 @@ export default function CourseDetailScreen() {
             }
             style={styles.accordion}
           >
-            {chapter.lessons.map((lesson) => (
-              <List.Item
-                key={lesson.id}
-                title={lesson.title}
-                description={
-                  lesson.durationSeconds
-                    ? `${Math.round(lesson.durationSeconds / 60)} min`
-                    : lesson.lessonType
-                }
-                left={(props) => (
-                  <List.Icon
-                    {...props}
-                    icon={
-                      lesson.lessonType === 'video'
-                        ? 'play-circle-outline'
-                        : lesson.lessonType === 'exercise'
-                          ? 'code-tags'
-                          : 'file-document-outline'
-                    }
-                  />
-                )}
-                right={() =>
-                  lesson.isFreePreview ? (
-                    <Chip compact style={{ backgroundColor: '#ECFDF5', alignSelf: 'center' }}>
-                      Preview
-                    </Chip>
-                  ) : null
-                }
-                style={styles.lessonItem}
-              />
-            ))}
+            {chapter.lessons.map((lesson) => {
+              const canOpen = course.isEnrolled || lesson.isFreePreview;
+              return (
+                <List.Item
+                  key={lesson.id}
+                  title={lesson.title}
+                  description={
+                    lesson.durationSeconds
+                      ? `${Math.round(lesson.durationSeconds / 60)} min`
+                      : lesson.lessonType
+                  }
+                  left={(props) => (
+                    <List.Icon
+                      {...props}
+                      icon={
+                        lesson.lessonType === 'video'
+                          ? 'play-circle-outline'
+                          : lesson.lessonType === 'exercise'
+                            ? 'code-tags'
+                            : lesson.lessonType === 'pdf'
+                              ? 'file-pdf-box'
+                              : 'file-document-outline'
+                      }
+                    />
+                  )}
+                  right={() =>
+                    lesson.isFreePreview ? (
+                      <Chip compact style={{ backgroundColor: '#ECFDF5', alignSelf: 'center' }}>
+                        Preview
+                      </Chip>
+                    ) : null
+                  }
+                  onPress={canOpen ? () => router.push(`/course/${slug}/lesson/${lesson.id}`) : undefined}
+                  style={[styles.lessonItem, canOpen && { backgroundColor: '#FAFAFA' }]}
+                />
+              );
+            })}
           </List.Accordion>
         ))}
 

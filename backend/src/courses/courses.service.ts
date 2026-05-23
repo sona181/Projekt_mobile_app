@@ -143,6 +143,20 @@ export class CoursesService {
     };
   }
 
+  async getLessonWithContent(lessonId: string) {
+    const lesson = await this.prisma.lesson.findUnique({
+      where: { id: lessonId },
+      include: {
+        lessonContents: { orderBy: { orderIndex: 'asc' } },
+        exercises: { orderBy: { orderIndex: 'asc' } },
+        assets: true,
+        chapter: { include: { course: { select: { id: true, title: true, slug: true, authorId: true } } } },
+      },
+    });
+    if (!lesson) throw new NotFoundException('Lesson not found.');
+    return lesson;
+  }
+
   async listCategories() {
     return this.prisma.courseCategory.findMany({
       where: { parentId: null },
