@@ -515,17 +515,21 @@ function Step2({
   );
 }
 
-// ─── Content editors per lesson type ─────────────────────────────────────────
+// ─── Types for saved blocks ───────────────────────────────────────────────────
+type SavedBlock = { id: string; kind: 'content' | 'exercise' | 'asset'; label: string; emoji: string };
 
-function TextEditor({
-  lessonId,
-  instructorId,
-  onDone,
-}: {
-  lessonId: string;
-  instructorId: string;
-  onDone: () => void;
-}) {
+const ADD_BLOCK_TYPES = [
+  { value: 'text',     emoji: '📝', label: 'Text' },
+  { value: 'video',    emoji: '🎥', label: 'Video' },
+  { value: 'pdf',      emoji: '📄', label: 'PDF' },
+  { value: 'file',     emoji: '🗜️', label: 'File / ZIP' },
+  { value: 'exercise', emoji: '💻', label: 'Exercise' },
+];
+
+// ─── Inline Text Block ────────────────────────────────────────────────────────
+function InlineTextBlock({
+  lessonId, instructorId, blockCount, onSaved,
+}: { lessonId: string; instructorId: string; blockCount: number; onSaved: (b: SavedBlock) => void }) {
   const [body, setBody] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -533,86 +537,61 @@ function TextEditor({
     if (!body.trim()) return;
     setSaving(true);
     try {
-      await fetch(`${BASE}/instructor/${instructorId}/lessons/${lessonId}/content`, {
+      const res = await fetch(`${BASE}/instructor/${instructorId}/lessons/${lessonId}/content`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contentType: 'text', body: body.trim(), orderIndex: 0 }),
+        body: JSON.stringify({ contentType: 'text', body: body.trim(), orderIndex: blockCount }),
       });
-      onDone();
+      const data = await res.json();
+      setBody('');
+      onSaved({ id: data.id, kind: 'content', emoji: '📝', label: `Text · ${body.trim().slice(0, 40)}…` });
     } catch {
-      Alert.alert('Error', 'Failed to save text content.');
+      Alert.alert('Error', 'Failed to save text block.');
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <View style={s.editorBox}>
-      <Text style={s.editorHint}>Write your lesson content below:</Text>
+    <View style={s.inlineEditor}>
       <TextInput
         style={[s.input, s.editorTextarea]}
-        placeholder="Type lesson text here..."
+        placeholder="Write lesson text, code snippets, explanations..."
         value={body}
         onChangeText={setBody}
         multiline
         textAlignVertical="top"
         placeholderTextColor="#9CA3AF"
       />
-      <TouchableOpacity
-        style={[s.primaryBtn, { marginTop: 10 }]}
-        onPress={save}
-        disabled={saving}
-      >
-        {saving ? (
-          <ActivityIndicator color="white" size="small" />
-        ) : (
-          <Text style={s.primaryBtnText}>Save Text</Text>
-        )}
+      <TouchableOpacity style={s.saveBlockBtn} onPress={save} disabled={saving}>
+        {saving ? <ActivityIndicator color="white" size="small" /> : <Text style={s.saveBlockBtnText}>+ Add Text Block</Text>}
       </TouchableOpacity>
     </View>
   );
 }
 
-function VideoEditor({
-  lessonId,
-  courseId,
-  instructorId,
-  onDone,
-}: {
-  lessonId: string;
-  courseId: string;
-  instructorId: string;
-  onDone: () => void;
-}) {
+// ─── Inline Video Block ───────────────────────────────────────────────────────
+function InlineVideoBlock({
+  lessonId, courseId, instructorId, blockCount, onSaved,
+}: { lessonId: string; courseId: string; instructorId: string; blockCount: number; onSaved: (b: SavedBlock) => void }) {
   const [uploading, setUploading] = useState(false);
-  const [picked, setPicked] = useState<string | null>(null);
 
   async function pick() {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['videos'],
-      allowsEditing: false,
-      quality: 1,
-    });
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['videos'], quality: 1 });
     if (result.canceled || !result.assets?.[0]) return;
     const asset = result.assets[0];
-    setPicked(asset.fileName ?? asset.uri.split('/').pop() ?? 'video.mp4');
+    const name = asset.fileName ?? asset.uri.split('/').pop() ?? 'video.mp4';
     setUploading(true);
     try {
       const form = new FormData();
-      form.append('file', {
-        uri: asset.uri,
-        name: asset.fileName ?? 'video.mp4',
-        type: asset.mimeType ?? 'video/mp4',
-      } as any);
+      form.append('file', { uri: asset.uri, name, type: asset.mimeType ?? 'video/mp4' } as any);
       const res = await fetch(
         `${BASE}/instructor/${instructorId}/courses/${courseId}/lessons/${lessonId}/upload?contentType=video`,
         { method: 'POST', body: form },
       );
-      if (res.ok) {
-        onDone();
-      } else {
-        Alert.alert('Upload failed', 'Could not upload video. Try again.');
-      }
+      const data = await res.json();
+      if (res.ok) onSaved({ id: data.id ?? Date.now().toString(), kind: 'asset', emoji: '🎥', label: `Video · ${name}` });
+      else Alert.alert('Upload failed', 'Try again.');
     } catch {
       Alert.alert('Error', 'Network error during upload.');
     } finally {
@@ -621,63 +600,37 @@ function VideoEditor({
   }
 
   return (
-    <View style={s.editorBox}>
-      <Text style={s.editorHint}>Pick a video from your device:</Text>
-      {picked && <Text style={s.pickedName}>📎 {picked}</Text>}
-      <TouchableOpacity
-        style={[s.uploadPickBtn, uploading && { opacity: 0.6 }]}
-        onPress={pick}
-        disabled={uploading}
-      >
-        {uploading ? (
-          <ActivityIndicator color="#7C3AED" size="small" />
-        ) : (
-          <Text style={s.uploadPickBtnText}>🎥 Pick Video from Library</Text>
-        )}
+    <View style={s.inlineEditor}>
+      <TouchableOpacity style={[s.uploadPickBtn, uploading && { opacity: 0.6 }]} onPress={pick} disabled={uploading}>
+        {uploading
+          ? <><ActivityIndicator color="#7C3AED" size="small" /><Text style={[s.uploadPickBtnText, { marginTop: 6 }]}>Uploading…</Text></>
+          : <Text style={s.uploadPickBtnText}>🎥 Pick Video from Library</Text>}
       </TouchableOpacity>
     </View>
   );
 }
 
-function PdfEditor({
-  lessonId,
-  courseId,
-  instructorId,
-  onDone,
-}: {
-  lessonId: string;
-  courseId: string;
-  instructorId: string;
-  onDone: () => void;
-}) {
+// ─── Inline PDF Block ─────────────────────────────────────────────────────────
+function InlinePdfBlock({
+  lessonId, courseId, instructorId, blockCount, onSaved,
+}: { lessonId: string; courseId: string; instructorId: string; blockCount: number; onSaved: (b: SavedBlock) => void }) {
   const [uploading, setUploading] = useState(false);
-  const [picked, setPicked] = useState<string | null>(null);
 
   async function pick() {
-    const result = await DocumentPicker.getDocumentAsync({
-      type: 'application/pdf',
-      copyToCacheDirectory: true,
-    });
+    const result = await DocumentPicker.getDocumentAsync({ type: 'application/pdf', copyToCacheDirectory: true });
     if (result.canceled || !result.assets?.[0]) return;
     const asset = result.assets[0];
-    setPicked(asset.name);
     setUploading(true);
     try {
       const form = new FormData();
-      form.append('file', {
-        uri: asset.uri,
-        name: asset.name,
-        type: asset.mimeType ?? 'application/pdf',
-      } as any);
+      form.append('file', { uri: asset.uri, name: asset.name, type: asset.mimeType ?? 'application/pdf' } as any);
       const res = await fetch(
         `${BASE}/instructor/${instructorId}/courses/${courseId}/lessons/${lessonId}/upload?contentType=pdf`,
         { method: 'POST', body: form },
       );
-      if (res.ok) {
-        onDone();
-      } else {
-        Alert.alert('Upload failed', 'Could not upload PDF. Try again.');
-      }
+      const data = await res.json();
+      if (res.ok) onSaved({ id: data.id ?? Date.now().toString(), kind: 'asset', emoji: '📄', label: `PDF · ${asset.name}` });
+      else Alert.alert('Upload failed', 'Try again.');
     } catch {
       Alert.alert('Error', 'Network error during upload.');
     } finally {
@@ -686,33 +639,60 @@ function PdfEditor({
   }
 
   return (
-    <View style={s.editorBox}>
-      <Text style={s.editorHint}>Pick a PDF file from your device:</Text>
-      {picked && <Text style={s.pickedName}>📎 {picked}</Text>}
-      <TouchableOpacity
-        style={[s.uploadPickBtn, uploading && { opacity: 0.6 }]}
-        onPress={pick}
-        disabled={uploading}
-      >
-        {uploading ? (
-          <ActivityIndicator color="#7C3AED" size="small" />
-        ) : (
-          <Text style={s.uploadPickBtnText}>📄 Pick PDF from Device</Text>
-        )}
+    <View style={s.inlineEditor}>
+      <TouchableOpacity style={[s.uploadPickBtn, uploading && { opacity: 0.6 }]} onPress={pick} disabled={uploading}>
+        {uploading
+          ? <><ActivityIndicator color="#7C3AED" size="small" /><Text style={[s.uploadPickBtnText, { marginTop: 6 }]}>Uploading…</Text></>
+          : <Text style={s.uploadPickBtnText}>📄 Pick PDF from Device</Text>}
       </TouchableOpacity>
     </View>
   );
 }
 
-function ExerciseEditor({
-  lessonId,
-  instructorId,
-  onDone,
-}: {
-  lessonId: string;
-  instructorId: string;
-  onDone: () => void;
-}) {
+// ─── Inline File/ZIP Block ────────────────────────────────────────────────────
+function InlineFileBlock({
+  lessonId, courseId, instructorId, onSaved,
+}: { lessonId: string; courseId: string; instructorId: string; onSaved: (b: SavedBlock) => void }) {
+  const [uploading, setUploading] = useState(false);
+
+  async function pick() {
+    const result = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
+    if (result.canceled || !result.assets?.[0]) return;
+    const asset = result.assets[0];
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append('file', { uri: asset.uri, name: asset.name, type: asset.mimeType ?? 'application/octet-stream' } as any);
+      const isZip = asset.name.endsWith('.zip') || asset.name.endsWith('.tar') || asset.name.endsWith('.gz');
+      const res = await fetch(
+        `${BASE}/instructor/${instructorId}/courses/${courseId}/lessons/${lessonId}/upload?contentType=${isZip ? 'zip' : 'file'}`,
+        { method: 'POST', body: form },
+      );
+      const data = await res.json();
+      if (res.ok) onSaved({ id: data.id ?? Date.now().toString(), kind: 'asset', emoji: isZip ? '🗜️' : '📎', label: `File · ${asset.name}` });
+      else Alert.alert('Upload failed', 'Try again.');
+    } catch {
+      Alert.alert('Error', 'Network error during upload.');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <View style={s.inlineEditor}>
+      <TouchableOpacity style={[s.uploadPickBtn, uploading && { opacity: 0.6 }]} onPress={pick} disabled={uploading}>
+        {uploading
+          ? <><ActivityIndicator color="#7C3AED" size="small" /><Text style={[s.uploadPickBtnText, { marginTop: 6 }]}>Uploading…</Text></>
+          : <Text style={s.uploadPickBtnText}>🗜️ Pick File / ZIP from Device</Text>}
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ─── Inline Exercise Block ────────────────────────────────────────────────────
+function InlineExerciseBlock({
+  lessonId, instructorId, blockCount, onSaved,
+}: { lessonId: string; instructorId: string; blockCount: number; onSaved: (b: SavedBlock) => void }) {
   const [title, setTitle] = useState('');
   const [instructions, setInstructions] = useState('');
   const [language, setLanguage] = useState('python');
@@ -721,29 +701,25 @@ function ExerciseEditor({
   const [saving, setSaving] = useState(false);
 
   async function save() {
-    if (!title.trim()) {
-      Alert.alert('Validation', 'Exercise title is required.');
-      return;
-    }
+    if (!title.trim()) { Alert.alert('Validation', 'Exercise title is required.'); return; }
     setSaving(true);
     try {
-      const res = await fetch(
-        `${BASE}/instructor/${instructorId}/lessons/${lessonId}/exercise`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: title.trim(),
-            instructions: instructions.trim() || undefined,
-            language,
-            starterCode: starterCode.trim() || undefined,
-            expectedOutput: expectedOutput.trim() || undefined,
-            orderIndex: 0,
-          }),
-        },
-      );
+      const res = await fetch(`${BASE}/instructor/${instructorId}/lessons/${lessonId}/exercise`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title.trim(),
+          instructions: instructions.trim() || undefined,
+          language,
+          starterCode: starterCode.trim() || undefined,
+          expectedOutput: expectedOutput.trim() || undefined,
+          orderIndex: blockCount,
+        }),
+      });
+      const data = await res.json();
       if (res.ok) {
-        onDone();
+        setTitle(''); setInstructions(''); setStarterCode(''); setExpectedOutput('');
+        onSaved({ id: data.id, kind: 'exercise', emoji: '💻', label: `Exercise · ${title.trim()}` });
       } else {
         Alert.alert('Error', 'Failed to save exercise.');
       }
@@ -755,17 +731,11 @@ function ExerciseEditor({
   }
 
   return (
-    <View style={s.editorBox}>
+    <View style={s.inlineEditor}>
       <SectionLabel text="Exercise Title *" />
-      <TextInput
-        style={s.input}
-        placeholder="e.g. Print Hello World"
-        value={title}
-        onChangeText={setTitle}
-        placeholderTextColor="#9CA3AF"
-      />
+      <TextInput style={s.input} placeholder="e.g. Print Hello World" value={title} onChangeText={setTitle} placeholderTextColor="#9CA3AF" />
 
-      <SectionLabel text="Programming Language" />
+      <SectionLabel text="Language" />
       <View style={[s.pillRow, { flexWrap: 'wrap' }]}>
         {CODE_LANGUAGES.map((l) => (
           <Pill key={l} label={l} active={language === l} onPress={() => setLanguage(l)} />
@@ -773,56 +743,22 @@ function ExerciseEditor({
       </View>
 
       <SectionLabel text="Instructions" />
-      <TextInput
-        style={[s.input, s.editorTextarea]}
-        placeholder="Describe what the student should do..."
-        value={instructions}
-        onChangeText={setInstructions}
-        multiline
-        textAlignVertical="top"
-        placeholderTextColor="#9CA3AF"
-      />
+      <TextInput style={[s.input, s.editorTextarea]} placeholder="What should the student do?" value={instructions} onChangeText={setInstructions} multiline textAlignVertical="top" placeholderTextColor="#9CA3AF" />
 
       <SectionLabel text="Starter Code" />
-      <TextInput
-        style={[s.input, s.codeInput]}
-        placeholder={`# starter code here\n`}
-        value={starterCode}
-        onChangeText={setStarterCode}
-        multiline
-        textAlignVertical="top"
-        placeholderTextColor="#9CA3AF"
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
+      <TextInput style={[s.input, s.codeInput]} placeholder="# starter code" value={starterCode} onChangeText={setStarterCode} multiline textAlignVertical="top" placeholderTextColor="#9CA3AF" autoCapitalize="none" autoCorrect={false} />
 
       <SectionLabel text="Expected Output" />
-      <TextInput
-        style={[s.input, { fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }]}
-        placeholder="Hello, World!"
-        value={expectedOutput}
-        onChangeText={setExpectedOutput}
-        placeholderTextColor="#9CA3AF"
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
+      <TextInput style={[s.input, { fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }]} placeholder="Hello, World!" value={expectedOutput} onChangeText={setExpectedOutput} placeholderTextColor="#9CA3AF" autoCapitalize="none" autoCorrect={false} />
 
-      <TouchableOpacity
-        style={[s.primaryBtn, { marginTop: 12 }]}
-        onPress={save}
-        disabled={saving}
-      >
-        {saving ? (
-          <ActivityIndicator color="white" size="small" />
-        ) : (
-          <Text style={s.primaryBtnText}>Save Exercise</Text>
-        )}
+      <TouchableOpacity style={s.saveBlockBtn} onPress={save} disabled={saving}>
+        {saving ? <ActivityIndicator color="white" size="small" /> : <Text style={s.saveBlockBtnText}>+ Add Exercise</Text>}
       </TouchableOpacity>
     </View>
   );
 }
 
-// ─── Content Editor Modal ─────────────────────────────────────────────────────
+// ─── Content Editor Modal (multi-block) ──────────────────────────────────────
 function ContentModal({
   lesson,
   courseId,
@@ -836,6 +772,41 @@ function ContentModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const [blocks, setBlocks] = useState<SavedBlock[]>([]);
+  const [activeType, setActiveType] = useState<string | null>(null);
+  const [loadingExisting, setLoadingExisting] = useState(true);
+
+  // Load already-saved blocks so instructor sees what's there
+  useEffect(() => {
+    if (!lesson.id) { setLoadingExisting(false); return; }
+    Promise.all([
+      fetch(`${BASE}/instructor/${instructorId}/lessons/${lesson.id}/content`).then((r) => r.json()).catch(() => []),
+      fetch(`${BASE}/instructor/${instructorId}/lessons/${lesson.id}/exercises`).then((r) => r.json()).catch(() => []),
+    ]).then(([contents, exercises]) => {
+      const existing: SavedBlock[] = [
+        ...(Array.isArray(contents) ? contents.map((c: any) => ({
+          id: c.id,
+          kind: 'content' as const,
+          emoji: c.contentType === 'video' ? '🎥' : c.contentType === 'pdf' ? '📄' : '📝',
+          label: c.contentType === 'text' ? `Text · ${(c.body ?? '').slice(0, 40)}` : `${c.contentType} · ${(c.mediaUrl ?? '').split('/').pop()}`,
+        })) : []),
+        ...(Array.isArray(exercises) ? exercises.map((e: any) => ({
+          id: e.id,
+          kind: 'exercise' as const,
+          emoji: '💻',
+          label: `Exercise · ${e.title}`,
+        })) : []),
+      ];
+      setBlocks(existing);
+    }).finally(() => setLoadingExisting(false));
+  }, [lesson.id]);
+
+  function addBlock(block: SavedBlock) {
+    setBlocks((prev) => [...prev, block]);
+    setActiveType(null);
+    onSaved();
+  }
+
   function handleDone() {
     onSaved();
     onClose();
@@ -844,58 +815,75 @@ function ContentModal({
   return (
     <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+        {/* Header */}
         <View style={s.modalHeader}>
           <TouchableOpacity onPress={onClose}>
             <Text style={s.modalClose}>✕ Close</Text>
           </TouchableOpacity>
-          <Text style={s.modalTitle}>
-            {LESSON_TYPES.find((t) => t.value === lesson.lessonType)?.emoji}{' '}
-            {lesson.title}
+          <Text style={s.modalTitle} numberOfLines={1}>
+            {LESSON_TYPES.find((t) => t.value === lesson.lessonType)?.emoji} {lesson.title}
           </Text>
-          <View style={{ width: 60 }} />
+          <TouchableOpacity onPress={handleDone} style={s.modalDoneBtn}>
+            <Text style={s.modalDoneText}>Done ✓</Text>
+          </TouchableOpacity>
         </View>
-        <ScrollView
-          contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
-          keyboardShouldPersistTaps="handled"
-        >
-          {lesson.lessonType === 'text' && (
-            <TextEditor lessonId={lesson.id!} instructorId={instructorId} onDone={handleDone} />
+
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 80 }} keyboardShouldPersistTaps="handled">
+
+          {/* Saved blocks list */}
+          {loadingExisting
+            ? <ActivityIndicator color="#7C3AED" style={{ marginVertical: 20 }} />
+            : blocks.length > 0 && (
+              <View style={s.blockList}>
+                <Text style={s.blockListHeader}>Content in this lesson ({blocks.length} block{blocks.length !== 1 ? 's' : ''})</Text>
+                {blocks.map((block, i) => (
+                  <View key={block.id} style={s.blockRow}>
+                    <Text style={s.blockRowEmoji}>{block.emoji}</Text>
+                    <Text style={s.blockRowLabel} numberOfLines={1}>{block.label}</Text>
+                    <Text style={s.blockRowIndex}>#{i + 1}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+          {/* Add more block — type picker */}
+          <Text style={s.addBlockTitle}>
+            {blocks.length === 0 ? 'Add your first content block:' : 'Add another block:'}
+          </Text>
+          <View style={s.typeGrid}>
+            {ADD_BLOCK_TYPES.map((t) => (
+              <TouchableOpacity
+                key={t.value}
+                style={[s.typeCard, activeType === t.value && s.typeCardActive]}
+                onPress={() => setActiveType(activeType === t.value ? null : t.value)}
+              >
+                <Text style={s.typeCardEmoji}>{t.emoji}</Text>
+                <Text style={[s.typeCardLabel, activeType === t.value && s.typeCardLabelActive]}>{t.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Inline editor for selected type */}
+          {activeType === 'text' && (
+            <InlineTextBlock lessonId={lesson.id!} instructorId={instructorId} blockCount={blocks.length} onSaved={addBlock} />
           )}
-          {lesson.lessonType === 'video' && (
-            <VideoEditor
-              lessonId={lesson.id!}
-              courseId={courseId}
-              instructorId={instructorId}
-              onDone={handleDone}
-            />
+          {activeType === 'video' && (
+            <InlineVideoBlock lessonId={lesson.id!} courseId={courseId} instructorId={instructorId} blockCount={blocks.length} onSaved={addBlock} />
           )}
-          {lesson.lessonType === 'pdf' && (
-            <PdfEditor
-              lessonId={lesson.id!}
-              courseId={courseId}
-              instructorId={instructorId}
-              onDone={handleDone}
-            />
+          {activeType === 'pdf' && (
+            <InlinePdfBlock lessonId={lesson.id!} courseId={courseId} instructorId={instructorId} blockCount={blocks.length} onSaved={addBlock} />
           )}
-          {lesson.lessonType === 'exercise' && (
-            <ExerciseEditor
-              lessonId={lesson.id!}
-              instructorId={instructorId}
-              onDone={handleDone}
-            />
+          {activeType === 'file' && (
+            <InlineFileBlock lessonId={lesson.id!} courseId={courseId} instructorId={instructorId} onSaved={addBlock} />
           )}
-          {lesson.lessonType === 'mixed' && (
-            <View style={s.editorBox}>
-              <Text style={s.editorHint}>
-                Mixed lessons support multiple content types. Add text or files using the
-                individual editors.
-              </Text>
-              <TextEditor
-                lessonId={lesson.id!}
-                instructorId={instructorId}
-                onDone={handleDone}
-              />
-            </View>
+          {activeType === 'exercise' && (
+            <InlineExerciseBlock lessonId={lesson.id!} instructorId={instructorId} blockCount={blocks.length} onSaved={addBlock} />
+          )}
+
+          {blocks.length > 0 && (
+            <TouchableOpacity style={[s.primaryBtn, { marginTop: 24 }]} onPress={handleDone}>
+              <Text style={s.primaryBtnText}>✓ Done — {blocks.length} block{blocks.length !== 1 ? 's' : ''} saved</Text>
+            </TouchableOpacity>
           )}
         </ScrollView>
       </SafeAreaView>
@@ -1484,6 +1472,29 @@ const s = StyleSheet.create({
     marginTop: 8,
   },
   uploadPickBtnText: { color: '#7C3AED', fontWeight: '700', fontSize: 15 },
+
+  // Multi-block editor
+  blockList: { backgroundColor: 'white', borderRadius: 14, borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 16, overflow: 'hidden' },
+  blockListHeader: { fontSize: 11, fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', padding: 12, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  blockRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
+  blockRowEmoji: { fontSize: 18 },
+  blockRowLabel: { flex: 1, fontSize: 13, color: '#374151', fontWeight: '500' },
+  blockRowIndex: { fontSize: 11, color: '#9CA3AF', backgroundColor: '#F3F4F6', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10 },
+
+  addBlockTitle: { fontSize: 13, fontWeight: '700', color: '#374151', marginBottom: 10 },
+  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  typeCard: { width: '30%', alignItems: 'center', paddingVertical: 14, borderRadius: 14, borderWidth: 2, borderColor: '#E5E7EB', backgroundColor: 'white', gap: 4 },
+  typeCardActive: { borderColor: '#7C3AED', backgroundColor: '#F5F3FF' },
+  typeCardEmoji: { fontSize: 22 },
+  typeCardLabel: { fontSize: 11, fontWeight: '700', color: '#6B7280' },
+  typeCardLabelActive: { color: '#7C3AED' },
+
+  inlineEditor: { backgroundColor: 'white', borderRadius: 14, borderWidth: 1, borderColor: '#DDD6FE', padding: 16, marginBottom: 16, gap: 8 },
+  saveBlockBtn: { backgroundColor: '#7C3AED', borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginTop: 6 },
+  saveBlockBtnText: { color: 'white', fontWeight: '700', fontSize: 14 },
+
+  modalDoneBtn: { backgroundColor: '#059669', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
+  modalDoneText: { color: 'white', fontWeight: '700', fontSize: 13 },
 
   // Review
   reviewTitle: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 12 },
