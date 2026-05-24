@@ -1,6 +1,6 @@
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -1103,10 +1103,11 @@ function Step4({
 export default function CreateCourseScreen() {
   const { user } = useAuth();
   const router = useRouter();
+  const { courseId: paramCourseId } = useLocalSearchParams<{ courseId?: string }>();
   const instructorId = user?.id ?? '';
   const [step, setStep] = useState(1);
   const [state, setState] = useState<CourseState>({
-    courseId: null,
+    courseId: paramCourseId ?? null,
     title: '',
     description: '',
     level: 'beginner',
@@ -1115,9 +1116,54 @@ export default function CreateCourseScreen() {
     price: '',
     chapters: [],
   });
+  const [loadingDraft, setLoadingDraft] = useState(!!paramCourseId);
+
+  // Preload full draft course data (including chapters + lessons) when opened from dashboard
+  useEffect(() => {
+    if (!paramCourseId || !instructorId) return;
+    fetch(`${BASE}/instructor/${instructorId}/courses/${paramCourseId}`)
+      .then((r) => r.json())
+      .then((c: any) => {
+        setState((prev) => ({
+          ...prev,
+          courseId: paramCourseId,
+          title: c.title ?? prev.title,
+          description: c.description ?? prev.description,
+          level: c.level ?? prev.level,
+          language: c.language ?? prev.language,
+          isPremium: c.isPremium ?? prev.isPremium,
+          price: c.price ? String(c.price) : prev.price,
+          chapters: Array.isArray(c.chapters)
+            ? c.chapters.map((ch: any) => ({
+                id: ch.id,
+                title: ch.title,
+                lessons: Array.isArray(ch.lessons)
+                  ? ch.lessons.map((l: any) => ({
+                      id: l.id,
+                      title: l.title,
+                      lessonType: l.lessonType,
+                      isFreePreview: l.isFreePreview,
+                    }))
+                  : [],
+              }))
+            : prev.chapters,
+        }));
+      })
+      .catch(() => {})
+      .finally(() => setLoadingDraft(false));
+  }, [paramCourseId, instructorId]);
 
   function update(patch: Partial<CourseState>) {
     setState((prev) => ({ ...prev, ...patch }));
+  }
+
+  if (loadingDraft) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FAFB', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#7C3AED" />
+        <Text style={{ marginTop: 12, color: '#6B7280' }}>Loading course…</Text>
+      </SafeAreaView>
+    );
   }
 
   return (
