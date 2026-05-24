@@ -4,6 +4,7 @@ import {
   Alert,
   ScrollView,
   StyleSheet,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import {
@@ -142,8 +143,12 @@ export default function CourseDetailScreen() {
             )}
           </View>
 
-          {/* Author */}
-          <View style={styles.author}>
+          {/* Author — tappable → instructor profile */}
+          <TouchableOpacity
+            style={styles.author}
+            onPress={() => router.push(`/instructor/${course.author.id}` as never)}
+            activeOpacity={0.7}
+          >
             {course.author.avatarUrl ? (
               <Avatar.Image size={32} source={{ uri: course.author.avatarUrl }} />
             ) : (
@@ -155,8 +160,53 @@ export default function CourseDetailScreen() {
             <Text variant="bodyMedium" style={styles.authorName}>
               {course.author.displayName}
             </Text>
-          </View>
+            <Text style={styles.authorArrow}>›</Text>
+          </TouchableOpacity>
         </Surface>
+
+        {/* Landing page — AI-generated content */}
+        {course.landingPage && (
+          <>
+            {(course.landingPage.headline || course.landingPage.subheadline) && (
+              <View style={styles.lpHero}>
+                {course.landingPage.headline ? (
+                  <Text variant="titleLarge" style={styles.lpHeadline}>
+                    {course.landingPage.headline}
+                  </Text>
+                ) : null}
+                {course.landingPage.subheadline ? (
+                  <Text variant="bodyMedium" style={styles.lpSubheadline}>
+                    {course.landingPage.subheadline}
+                  </Text>
+                ) : null}
+              </View>
+            )}
+
+            {Array.isArray(course.landingPage.objectives) && course.landingPage.objectives.length > 0 && (
+              <View style={styles.lpSection}>
+                <Text variant="titleMedium" style={styles.lpSectionTitle}>✅ What You'll Learn</Text>
+                {(course.landingPage.objectives as string[]).map((obj, i) => (
+                  <View key={i} style={styles.lpBulletRow}>
+                    <Text style={styles.lpBulletDot}>•</Text>
+                    <Text variant="bodyMedium" style={styles.lpBulletText}>{obj}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {Array.isArray(course.landingPage.targetAudience) && course.landingPage.targetAudience.length > 0 && (
+              <View style={styles.lpSection}>
+                <Text variant="titleMedium" style={styles.lpSectionTitle}>🎯 Who Is This For</Text>
+                {(course.landingPage.targetAudience as string[]).map((item, i) => (
+                  <View key={i} style={styles.lpBulletRow}>
+                    <Text style={styles.lpBulletDot}>•</Text>
+                    <Text variant="bodyMedium" style={styles.lpBulletText}>{item}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </>
+        )}
 
         {/* Enroll / progress */}
         <View style={styles.enrollSection}>
@@ -298,6 +348,22 @@ export default function CourseDetailScreen() {
             ))}
           </>
         )}
+
+        {/* FAQ */}
+        {course.landingPage &&
+          Array.isArray(course.landingPage.faq) &&
+          course.landingPage.faq.length > 0 && (
+            <>
+              <Divider style={styles.divider} />
+              <Text variant="titleMedium" style={styles.sectionTitle}>FAQ</Text>
+              {(course.landingPage.faq as { question: string; answer: string }[]).map((item, i) => (
+                <Surface key={i} style={styles.faqCard} elevation={0}>
+                  <Text variant="labelLarge" style={styles.faqQuestion}>{item.question}</Text>
+                  <Text variant="bodyMedium" style={styles.faqAnswer}>{item.answer}</Text>
+                </Surface>
+              ))}
+            </>
+          )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -317,7 +383,8 @@ const styles = StyleSheet.create({
   statValue: { fontWeight: '700', fontSize: 16 },
   statLabel: { fontSize: 11, color: '#999' },
   author: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-  authorName: { marginLeft: 8, color: '#555' },
+  authorName: { marginLeft: 8, color: '#555', flex: 1 },
+  authorArrow: { fontSize: 18, color: '#9CA3AF' },
   enrollSection: { paddingHorizontal: 16, marginBottom: 8 },
   enrollBtnContent: { paddingVertical: 6 },
   progressBox: { backgroundColor: '#F0FDF4', borderRadius: 10, padding: 12 },
@@ -337,4 +404,19 @@ const styles = StyleSheet.create({
   reviewAuthor: { marginLeft: 8, flex: 1 },
   reviewStars: { color: '#F59E0B', letterSpacing: 1 },
   reviewComment: { color: '#555', lineHeight: 20 },
+
+  // Landing page
+  lpHero: { marginHorizontal: 16, marginTop: 16, backgroundColor: '#EEF2FF', borderRadius: 12, padding: 16 },
+  lpHeadline: { fontWeight: '800', color: '#1E3A8A', marginBottom: 6 },
+  lpSubheadline: { color: '#374151', lineHeight: 22 },
+  lpSection: { marginHorizontal: 16, marginTop: 16 },
+  lpSectionTitle: { fontWeight: '700', marginBottom: 10 },
+  lpBulletRow: { flexDirection: 'row', marginBottom: 6 },
+  lpBulletDot: { color: '#6B7280', marginRight: 8, marginTop: 2 },
+  lpBulletText: { flex: 1, color: '#374151', lineHeight: 22 },
+
+  // FAQ
+  faqCard: { marginHorizontal: 16, marginBottom: 10, padding: 14, borderRadius: 10, backgroundColor: '#F9FAFB' },
+  faqQuestion: { color: '#111827', marginBottom: 4 },
+  faqAnswer: { color: '#555', lineHeight: 20 },
 });

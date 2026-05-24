@@ -76,6 +76,7 @@ export class CoursesService {
       include: {
         author: { include: { profile: true } },
         category: true,
+        landingPage: true,
         chapters: {
           orderBy: { orderIndex: 'asc' },
           include: {
@@ -121,6 +122,15 @@ export class CoursesService {
     return {
       ...this.formatCourse(course, isEnrolled),
       chapters: course.chapters,
+      landingPage: course.landingPage
+        ? {
+            headline: course.landingPage.headline,
+            subheadline: course.landingPage.subheadline,
+            objectives: course.landingPage.objectives,
+            targetAudience: course.landingPage.targetAudience,
+            faq: course.landingPage.faq,
+          }
+        : null,
       recentReviews: course.reviews.map((r) => ({
         id: r.id,
         rating: r.rating,

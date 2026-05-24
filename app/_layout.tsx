@@ -21,6 +21,11 @@ export default function RootLayout() {
         <AuthProvider>
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="profile/edit" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="sessions/index" />
+            <Stack.Screen name="sessions/find-instructors" />
+            <Stack.Screen name="instructor/[userId]" />
+            <Stack.Screen name="instructor/profile" />
+            <Stack.Screen name="instructor/edit-profile" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
           </Stack>
         </AuthProvider>
       </PaperProvider>

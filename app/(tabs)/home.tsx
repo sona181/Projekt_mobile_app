@@ -1,8 +1,7 @@
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Redirect,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -300,7 +299,10 @@ export default function HomeScreen() {
         {/* ── HERO ─────────────────────────────────────────────────────── */}
         <View style={s.hero}>
           <View style={s.topRow}>
-            <View>
+            <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={s.backBtn}>‹</Text>
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
               <Text style={s.logo}>UniLearn</Text>
               <Text style={s.roleLabel}>Student Dashboard</Text>
             </View>
@@ -335,7 +337,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[s.quickBtn, { backgroundColor: '#7C3AED' }]}
-              onPress={() => router.push('/(tabs)/profile')}
+              onPress={() => router.push('/sessions' as never)}
               activeOpacity={0.85}
             >
               <Text style={s.quickIcon}>📅</Text>
@@ -506,6 +508,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 18,
   },
+  backBtn: { fontSize: 26, fontWeight: '400', color: 'rgba(255,255,255,0.85)', lineHeight: 30, marginRight: 4 },
   logo: { color: '#fff', fontWeight: '800', fontSize: 18 },
   roleLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 11, marginTop: 1 },
   avatarBtn: {

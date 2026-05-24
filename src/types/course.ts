@@ -56,10 +56,19 @@ export interface CourseReview {
   user: { displayName: string; avatarUrl: string | null };
 }
 
+export interface CourseLandingPage {
+  headline: string | null;
+  subheadline: string | null;
+  objectives: unknown;
+  targetAudience: unknown;
+  faq: unknown;
+}
+
 export interface CourseDetail extends CourseSummary {
   chapters: ChapterWithLessons[];
   recentReviews: CourseReview[];
   avgRating: number | null;
+  landingPage: CourseLandingPage | null;
   enrollment: {
     id: string;
     status: string;

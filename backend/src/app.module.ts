@@ -6,6 +6,7 @@ import { EnrollmentsModule } from './enrollments/enrollments.module.js';
 import { ExecuteModule } from './execute/execute.module.js';
 import { InstructorDashboardModule } from './instructor-dashboard/instructor-dashboard.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { SessionsModule } from './sessions/sessions.module.js';
 import { UsersModule } from './users/users.module.js';
 
 @Module({
@@ -18,6 +19,7 @@ import { UsersModule } from './users/users.module.js';
     EnrollmentsModule,
     ExecuteModule,
     InstructorDashboardModule,
+    SessionsModule,
   ],
 })
 export class AppModule {}

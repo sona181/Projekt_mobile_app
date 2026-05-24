@@ -271,7 +271,10 @@ export default function CoursesScreen() {
       {/* Fixed header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <View>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={styles.backText}>‹</Text>
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle}>Browse Courses</Text>
             <Text style={styles.headerSub}>
               {total > 0 ? `${total} courses available` : 'Explore all courses'}
@@ -400,7 +403,9 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 14,
   },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  headerTop: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  backBtn: { paddingRight: 4 },
+  backText: { color: 'rgba(255,255,255,0.85)', fontSize: 28, fontWeight: '400', lineHeight: 32 },
   headerTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
   headerSub: { color: '#93C5FD', fontSize: 12, marginTop: 2 },
 
