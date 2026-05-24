@@ -7,6 +7,7 @@ import { CreateLessonContentDto } from './dto/create-lesson-content.dto.js';
 import { CreateLessonDto } from './dto/create-lesson.dto.js';
 import { CreateNoteDto } from './dto/create-note.dto.js';
 import { BookingStatus } from './dto/update-booking-status.dto.js';
+import { UpdateInstructorProfileDto } from './dto/update-instructor-profile.dto.js';
 
 @Injectable()
 export class InstructorDashboardService {
@@ -76,6 +77,12 @@ export class InstructorDashboardService {
         displayName: instructor.profile?.displayName ?? instructor.email,
         avatarUrl: instructor.profile?.avatarUrl ?? null,
         initials: this.getInitials(instructor.profile?.displayName ?? instructor.email),
+        bio: instructor.instructorProfile?.bio ?? instructor.profile?.bio ?? null,
+        specialties: instructor.instructorProfile?.specialties ?? null,
+        languages: instructor.instructorProfile?.languages ?? null,
+        hourlyRate: instructor.instructorProfile?.hourlyRate ?? null,
+        isAvailable: instructor.instructorProfile?.isAvailable ?? true,
+        country: instructor.profile?.country ?? null,
       },
       stats: {
         activeStudents: activeStudentsResult.length,
@@ -159,11 +166,62 @@ export class InstructorDashboardService {
     return courses.map((c) => ({
       id: c.id,
       title: c.title,
+      description: c.description,
+      level: c.level,
+      language: c.language,
+      isPremium: c.isPremium,
+      price: c.price,
       status: c.status,
       totalLessons: c.chapters.reduce((sum, ch) => sum + ch._count.lessons, 0),
       studentCount: c._count.enrollments,
       thumbnailUrl: c.thumbnailUrl,
     }));
+  }
+
+  async getCourseById(instructorId: string, courseId: string) {
+    const course = await this.prisma.course.findFirst({
+      where: { id: courseId, authorId: instructorId },
+      include: {
+        chapters: {
+          orderBy: { orderIndex: 'asc' },
+          include: {
+            lessons: {
+              orderBy: { orderIndex: 'asc' },
+              select: {
+                id: true,
+                title: true,
+                lessonType: true,
+                isFreePreview: true,
+                orderIndex: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!course) throw new NotFoundException('Course not found');
+    return {
+      id: course.id,
+      title: course.title,
+      description: course.description,
+      level: course.level,
+      language: course.language,
+      isPremium: course.isPremium,
+      price: course.price,
+      status: course.status,
+      chapters: course.chapters.map((ch) => ({
+        id: ch.id,
+        title: ch.title,
+        orderIndex: ch.orderIndex,
+        lessons: ch.lessons.map((l) => ({
+          id: l.id,
+          title: l.title,
+          lessonType: l.lessonType,
+          isFreePreview: l.isFreePreview,
+          orderIndex: l.orderIndex,
+        })),
+      })),
+    };
   }
 
   // ── Earnings ───────────────────────────────────────────────────────────────
@@ -402,6 +460,54 @@ export class InstructorDashboardService {
       where: { id: bookingId },
       data: { status },
     });
+  }
+
+  // ── Instructor Profile ─────────────────────────────────────────────────────
+  async updateInstructorProfile(userId: string, dto: UpdateInstructorProfileDto) {
+    const now = new Date();
+
+    if (dto.displayName !== undefined || dto.bio !== undefined) {
+      await this.prisma.userProfile.upsert({
+        where: { userId },
+        create: {
+          userId,
+          displayName: dto.displayName ?? '',
+          bio: dto.bio,
+          createdAt: now,
+          updatedAt: now,
+        },
+        update: {
+          ...(dto.displayName !== undefined ? { displayName: dto.displayName } : {}),
+          ...(dto.bio !== undefined ? { bio: dto.bio } : {}),
+          updatedAt: now,
+        },
+      });
+    }
+
+    await this.prisma.instructorProfile.upsert({
+      where: { userId },
+      create: {
+        userId,
+        bio: dto.bio,
+        specialties: dto.specialties,
+        languages: dto.languages,
+        hourlyRate: dto.hourlyRate,
+        isVerified: false,
+        isAvailable: dto.isAvailable ?? true,
+        createdAt: now,
+        updatedAt: now,
+      },
+      update: {
+        ...(dto.bio !== undefined ? { bio: dto.bio } : {}),
+        ...(dto.specialties !== undefined ? { specialties: dto.specialties } : {}),
+        ...(dto.languages !== undefined ? { languages: dto.languages } : {}),
+        ...(dto.hourlyRate !== undefined ? { hourlyRate: dto.hourlyRate } : {}),
+        ...(dto.isAvailable !== undefined ? { isAvailable: dto.isAvailable } : {}),
+        updatedAt: now,
+      },
+    });
+
+    return { ok: true };
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────

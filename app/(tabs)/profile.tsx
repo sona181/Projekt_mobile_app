@@ -1,9 +1,10 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Avatar, Button, Card, Chip, ProgressBar, Text, useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/context/AuthContext';
+import { api } from '../../src/services/api';
 import { courseService } from '../../src/services/courseService';
 import type { EnrollmentSummary } from '../../src/types/course';
 
@@ -18,6 +19,33 @@ export default function ProfileScreen() {
   const theme = useTheme();
   const router = useRouter();
   const [enrollments, setEnrollments] = useState<EnrollmentSummary[]>([]);
+  const [deleting, setDeleting] = useState(false);
+
+  function confirmDeleteAccount() {
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your account, all progress, and enrollments. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              await api.delete('/users/me');
+              await logout();
+              router.replace('/(auth)/login');
+            } catch {
+              Alert.alert('Error', 'Could not delete account. Please try again.');
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ],
+    );
+  }
 
   const displayName = user?.profile?.displayName ?? user?.email ?? 'Learner';
   const email = user?.email ?? '';
@@ -46,6 +74,9 @@ export default function ProfileScreen() {
         {/* ── Header ── */}
         <View style={styles.header}>
           <View style={styles.headerTop}>
+            <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={styles.backBtn}>‹</Text>
+            </TouchableOpacity>
             <Text style={styles.screenTitle}>My Profile</Text>
             <TouchableOpacity onPress={() => router.push('/profile/edit')}>
               <Text style={styles.editLink}>Edit</Text>
@@ -182,9 +213,9 @@ export default function ProfileScreen() {
                 <Text style={styles.settingsChevron}>›</Text>
               </TouchableOpacity>
               <View style={styles.divider} />
-              <TouchableOpacity style={styles.settingsRow}>
+              <TouchableOpacity style={styles.settingsRow} onPress={() => router.push('/sessions/find-instructors' as never)}>
                 <Text style={styles.settingsIcon}>🔔</Text>
-                <Text style={styles.settingsLabel}>Notifications</Text>
+                <Text style={styles.settingsLabel}>Book a Session</Text>
                 <Text style={styles.settingsChevron}>›</Text>
               </TouchableOpacity>
               <View style={styles.divider} />
@@ -197,7 +228,7 @@ export default function ProfileScreen() {
           </Card>
         </View>
 
-        {/* ── Sign Out ── */}
+        {/* ── Sign Out & Delete ── */}
         <View style={styles.section}>
           <Button
             mode="outlined"
@@ -208,6 +239,16 @@ export default function ProfileScreen() {
             contentStyle={styles.logoutContent}
           >
             Sign Out
+          </Button>
+          <Button
+            mode="text"
+            onPress={confirmDeleteAccount}
+            loading={deleting}
+            disabled={deleting}
+            textColor="#9CA3AF"
+            style={{ marginTop: 4 }}
+          >
+            Delete Account
           </Button>
           <Text style={styles.versionText}>UniLearn v1.0.0</Text>
         </View>
@@ -233,6 +274,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
+  backBtn: { fontSize: 26, fontWeight: '400', color: 'rgba(255,255,255,0.85)', lineHeight: 30, width: 28 },
   screenTitle: { fontSize: 18, fontWeight: '800', color: 'white' },
   editLink: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.8)' },
   avatarRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },

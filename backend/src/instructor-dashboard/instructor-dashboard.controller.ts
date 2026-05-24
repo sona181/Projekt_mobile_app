@@ -23,6 +23,7 @@ import { CreateLessonContentDto } from './dto/create-lesson-content.dto.js';
 import { CreateLessonDto } from './dto/create-lesson.dto.js';
 import { CreateNoteDto } from './dto/create-note.dto.js';
 import { UpdateBookingStatusDto } from './dto/update-booking-status.dto.js';
+import { UpdateInstructorProfileDto } from './dto/update-instructor-profile.dto.js';
 import { InstructorDashboardService } from './instructor-dashboard.service.js';
 
 const UPLOADS_DIR = join(process.cwd(), 'uploads');
@@ -63,10 +64,25 @@ export class InstructorDashboardController {
     return this.dashboardService.getCourses(id);
   }
 
+  /** GET /instructor/:id/courses/:courseId */
+  @Get(':id/courses/:courseId')
+  getCourseById(@Param('id') id: string, @Param('courseId') courseId: string) {
+    return this.dashboardService.getCourseById(id, courseId);
+  }
+
   /** GET /instructor/:id/earnings */
   @Get(':id/earnings')
   getEarnings(@Param('id') id: string) {
     return this.dashboardService.getEarnings(id);
+  }
+
+  /** PATCH /instructor/:id/instructor-profile */
+  @Patch(':id/instructor-profile')
+  updateInstructorProfile(
+    @Param('id') id: string,
+    @Body() dto: UpdateInstructorProfileDto,
+  ) {
+    return this.dashboardService.updateInstructorProfile(id, dto);
   }
 
   /** PATCH /instructor/bookings/:bookingId/status */
