@@ -47,7 +47,7 @@ export default function ProfileScreen() {
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <Text style={styles.screenTitle}>My Profile</Text>
-            <TouchableOpacity onPress={() => router.push('/profile/edit' as never)}>
+            <TouchableOpacity onPress={() => router.push('/profile/edit')}>
               <Text style={styles.editLink}>Edit</Text>
             </TouchableOpacity>
           </View>
@@ -176,7 +176,7 @@ export default function ProfileScreen() {
           <Text style={styles.secTitle}>Account</Text>
           <Card style={styles.settingsCard} mode="elevated">
             <Card.Content style={{ padding: 0 }}>
-              <TouchableOpacity style={styles.settingsRow}>
+              <TouchableOpacity style={styles.settingsRow} onPress={() => router.push('/profile/edit')}>
                 <Text style={styles.settingsIcon}>👤</Text>
                 <Text style={styles.settingsLabel}>Edit Profile</Text>
                 <Text style={styles.settingsChevron}>›</Text>
@@ -201,7 +201,7 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <Button
             mode="outlined"
-            onPress={logout}
+            onPress={async () => { await logout(); router.replace('/(auth)/login'); }}
             icon="logout"
             textColor="#EF4444"
             style={styles.logoutBtn}
