@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useVideoPlayer, VideoView } from 'expo-video';
-import { useEffect, useState } from 'react';
+import { Video, ResizeMode } from 'expo-av';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -61,27 +61,17 @@ type LessonData = {
 
 // ─── Video Player ─────────────────────────────────────────────────────────────
 function VideoPlayer({ url }: { url: string }) {
-  const player = useVideoPlayer(url, (p) => {
-    p.loop = false;
-  });
-
+  const videoRef = useRef(null);
   return (
     <View style={vs.container}>
-      <VideoView
-        player={player}
+      <Video
+        ref={videoRef}
+        source={{ uri: url }}
         style={vs.video}
-        allowsFullscreen
-        allowsPictureInPicture
-        contentFit="contain"
+        useNativeControls
+        resizeMode={ResizeMode.CONTAIN}
+        isLooping={false}
       />
-      <View style={vs.controls}>
-        <TouchableOpacity
-          style={vs.playBtn}
-          onPress={() => (player.playing ? player.pause() : player.play())}
-        >
-          <Text style={vs.playBtnText}>▶ / ⏸ Play / Pause</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
@@ -89,9 +79,6 @@ function VideoPlayer({ url }: { url: string }) {
 const vs = StyleSheet.create({
   container: { borderRadius: 14, overflow: 'hidden', backgroundColor: '#000', marginBottom: 16 },
   video: { width: '100%', height: 220 },
-  controls: { padding: 10, backgroundColor: '#111' },
-  playBtn: { alignItems: 'center', paddingVertical: 8 },
-  playBtnText: { color: 'white', fontWeight: '700', fontSize: 15 },
 });
 
 // ─── PDF / File Block ─────────────────────────────────────────────────────────
