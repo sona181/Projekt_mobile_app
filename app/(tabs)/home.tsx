@@ -1,7 +1,8 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Redirect,
   RefreshControl,
   ScrollView,
@@ -150,9 +151,18 @@ function CourseCard({
   const pct = Math.round(Number(progress?.progressPercent ?? 0));
   const color = colorForIndex(colorIndex);
   const emoji = courseEmoji(course.title, course.language);
+  const scale = useRef(new Animated.Value(1)).current;
+
+  function pressIn() {
+    Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, tension: 200, friction: 8 }).start();
+  }
+  function pressOut() {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 200, friction: 8 }).start();
+  }
 
   return (
-    <TouchableOpacity style={s.courseCard} onPress={onPress} activeOpacity={0.8}>
+    <Animated.View style={{ transform: [{ scale }] }}>
+    <TouchableOpacity style={s.courseCard} onPress={onPress} onPressIn={pressIn} onPressOut={pressOut} activeOpacity={1}>
       <View style={[s.courseIconBox, { backgroundColor: `${color}18` }]}>
         <Text style={{ fontSize: 24 }}>{emoji}</Text>
       </View>
@@ -172,6 +182,7 @@ function CourseCard({
         )}
       </View>
     </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -239,6 +250,10 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Entrance animations
+  const fadeAnim  = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(28)).current;
+
   if (user?.role === 'instructor') return <Redirect href="/instructor/dashboard" />;
 
   const displayName = user?.profile?.displayName ?? user?.email ?? 'Student';
@@ -257,7 +272,13 @@ export default function HomeScreen() {
     }
   }
 
-  useEffect(() => { loadEnrollments(); }, []);
+  useEffect(() => {
+    loadEnrollments();
+    Animated.parallel([
+      Animated.timing(fadeAnim,  { toValue: 1, duration: 420, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 380, useNativeDriver: true }),
+    ]).start();
+  }, []);
 
   const inProgress = enrollments.filter(
     (e) => e.status === 'active' && (e.progress?.progressPercent ?? 0) < 100,
@@ -321,7 +342,7 @@ export default function HomeScreen() {
         </View>
 
         {/* ── BODY ─────────────────────────────────────────────────────── */}
-        <View style={s.body}>
+        <Animated.View style={[s.body, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
 
           {/* Quick Actions */}
           <View style={s.quickRow}>
@@ -482,7 +503,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
 
           <View style={{ height: 32 }} />
-        </View>
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );

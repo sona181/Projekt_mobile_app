@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Animated,
   FlatList,
   RefreshControl,
   ScrollView,
@@ -106,9 +107,18 @@ function EnrolledCard({ e, onPress }: { e: EnrollmentSummary; onPress: () => voi
 function CourseCard({ course, onPress }: { course: CourseSummary; onPress: () => void }) {
   const color = colorForId(course.id);
   const emoji = courseEmoji(course.title, course.language);
+  const scale = useRef(new Animated.Value(1)).current;
+
+  function pressIn() {
+    Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, tension: 200, friction: 8 }).start();
+  }
+  function pressOut() {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 200, friction: 8 }).start();
+  }
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.88}>
+    <Animated.View style={{ transform: [{ scale }] }}>
+    <TouchableOpacity style={styles.card} onPress={onPress} onPressIn={pressIn} onPressOut={pressOut} activeOpacity={1}>
       <View style={[styles.cardBanner, { backgroundColor: color }]}>
         <Text style={styles.cardEmoji}>{emoji}</Text>
         <View style={styles.cardBadges}>
@@ -176,12 +186,15 @@ function CourseCard({ course, onPress }: { course: CourseSummary; onPress: () =>
         </View>
       </View>
     </TouchableOpacity>
+    </Animated.View>
   );
 }
 
 // ─── Main screen ─────────────────────────────────────────────────────────────
 export default function CoursesScreen() {
   const router = useRouter();
+
+  const listFade = useRef(new Animated.Value(0)).current;
 
   const [courses, setCourses] = useState<CourseSummary[]>([]);
   const [enrollments, setEnrollments] = useState<EnrollmentSummary[]>([]);
@@ -216,6 +229,7 @@ export default function CoursesScreen() {
         setLoading(false);
         setRefreshing(false);
         setLoadingMore(false);
+        Animated.timing(listFade, { toValue: 1, duration: 350, useNativeDriver: true }).start();
       }
     },
     [],
@@ -332,6 +346,7 @@ export default function CoursesScreen() {
           <Text style={styles.loadingText}>Loading courses…</Text>
         </View>
       ) : (
+        <Animated.View style={{ flex: 1, opacity: listFade }}>
         <FlatList
           data={courses}
           keyExtractor={(c) => c.id}
@@ -385,6 +400,7 @@ export default function CoursesScreen() {
             <CourseCard course={item} onPress={() => router.push(`/course/${item.slug}`)} />
           )}
         />
+        </Animated.View>
       )}
     </SafeAreaView>
   );
